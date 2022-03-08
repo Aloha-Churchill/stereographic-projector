@@ -1,107 +1,11 @@
-import dash
-from dash import Dash, html, dcc
-from dash.dependencies import Input, Output, State
-import plotly.graph_objects as go
-import plotly.express as px
-import pandas as pd
-import numpy as np
+"""
+Entry into main app
+"""
 
+from dashboard.content import app
 
-app = Dash(__name__)
-# Read data from a csv
-z_data = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/api_docs/mt_bruno_elevation.csv')
+server = app.server
 
-# need to set gradiation value of the points
-transparent_min = 0
-transparent_max = 10
-gradiation = 100
-num_clicks = 0
-
-transparent_scatter_layover = np.linspace(transparent_min, transparent_max, gradiation)
-
-
-path_data = [[],[], []]
-total_elevation_gain = 0
-
-fig = go.Figure(data=[go.Surface(z=z_data.values)]).add_traces(go.Scatter3d(
-    x = transparent_scatter_layover, 
-    y = transparent_scatter_layover, 
-    z = transparent_scatter_layover,
-    mode = 'markers',
-    marker = dict(
-        color = transparent_scatter_layover,
-        opacity=0.8
-    )))
-
-fig.update_layout(title='Mt Bruno Elevation', autosize=False,
-                  width=500, height=500,
-                  margin=dict(l=65, r=50, b=65, t=90))
-
-#fig.show()
-
-app.layout = html.Div(
-    children=[
-    html.H1(children='Terrain Mapper For Robots', style = {
-        'textAlign': 'center',
-        'color': '#7FDBFF'
-    }),
-
-    html.Div(children='''
-        Create different paths
-        1. You can see elevation gain through different paths
-        2. You can see total distance of different paths
-        3. You can change the type of connector between points
-
-    '''),
-
-    dcc.Graph(
-        id='graph',
-        figure=fig
-    ),
-
-    #html.Div(children=[html.H2('Coordinate Path: '), html.H2(id='coordinate_path')]),
-
-
-    #html.Div(id="where")
-
-    dcc.Graph(id='selected-plot')
-
-    #html.Div(["Input: ",
-    #dcc.Input(id='my-input', value='initial_value')])
-
-    
-])
-
-@app.callback(
-    [Output(component_id = "selected-plot",  component_property = "figure")],
-    [Input("graph", "clickData")],
-)
-
-
-
-
-def click(clickData):
-    if not clickData:
-        raise dash.exceptions.PreventUpdate
-    coord_dict = {k: clickData["points"][0][k] for k in ["x", "y", "z"] }
-    path_data[0].append(list(coord_dict.values())[0])
-    path_data[1].append(list(coord_dict.values())[1])
-    path_data[2].append(list(coord_dict.values())[2])
-    total_elevation_gain = np.sum(abs(np.diff(path_data[2])))
-    distance = 0
-    for i in range(1, len(path_data[0])):
-        distance += np.sqrt((path_data[0][i] - path_data[0][i-1])**2 + (path_data[2][i] - path_data[2][i-1])**2)
-
-
-    index_arr = np.arange(len(path_data[0]))
-    trace = go.Scatter(
-        x=path_data[0],
-        y=path_data[1],
-        mode = 'lines+markers+text',
-        name = 'current_2d_path',
-        text = [ ("(" + str(path_data[0][i]) + "," + str(path_data[1][i]) + ")") for i in index_arr]
-    )
-    return [go.Figure(data=trace).update_layout(title_text='Elevation Gain: ' + str(total_elevation_gain) + "\nTotal Distance Traveled: " + str(distance))]
-
+# If python running this file as main program, sets __name__ == __main__
 if __name__ == '__main__':
     app.run_server(debug=True)
